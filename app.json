@@ -6,10 +6,24 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Biyahe Buddy to use the microphone for translation.",
+          "speechRecognitionPermission": "Allow Biyahe Buddy to recognize your speech."
+        }
+      ],
+      "llama.rn",
+      "expo-asset"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -21,10 +35,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "llama.rn",
-      "expo-asset"
-    ],
     "extra": {
       "eas": {
         "projectId": "5be63965-a1f3-488c-8e64-23159e5f3a47"
