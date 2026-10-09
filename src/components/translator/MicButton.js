@@ -3,19 +3,21 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 // Press-and-hold to talk. The halo grows while listening.
-export default function MicButton({ listening, starting, onPress }) {
+export default function MicButton({ listening, starting, disabled, onPressIn, onPressOut }) {
   const halo = listening ? 108 : 96;
 
   return (
     <View className="items-center">
       <View className="h-[112px] items-center justify-center">
         <Pressable
-          onPress={onPress}
-          disabled={starting}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel={listening ? 'Stop listening' : 'Start speaking'}
+          accessibilityLabel={listening ? 'Listening' : 'Hold to speak'}
+          accessibilityHint="Release the button to finish speaking."
           className={`items-center justify-center rounded-full bg-duck-soft ${
-            starting ? 'opacity-60' : ''
+            starting || disabled ? 'opacity-60' : ''
           }`}
           style={{ width: halo, height: halo, borderRadius: halo / 2 }}
         >
@@ -24,7 +26,7 @@ export default function MicButton({ listening, starting, onPress }) {
               <ActivityIndicator color={colors.ink} />
             ) : (
               <MaterialCommunityIcons
-                name={listening ? 'stop' : 'microphone-outline'}
+                name={listening ? 'microphone' : 'microphone-outline'}
                 size={34}
                 color={colors.ink}
               />
@@ -36,8 +38,8 @@ export default function MicButton({ listening, starting, onPress }) {
         {starting
           ? 'Requesting microphone…'
           : listening
-            ? 'Listening… tap to finish'
-            : 'Tap to speak'}
+            ? 'Listening… release to finish'
+            : 'Hold to speak'}
       </Text>
     </View>
   );

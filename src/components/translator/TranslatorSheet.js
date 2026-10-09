@@ -56,6 +56,8 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
   const copiedTimer = useRef(null);
   const requestId = useRef(0);
   const startAttempt = useRef(0);
+  const microphoneHeld = useRef(false);
+  const recognitionRequested = useRef(false);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
 
@@ -86,7 +88,11 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
   const close = () => {
     startAttempt.current += 1;
     requestId.current += 1;
-    if (listening) SpeechRecognitionModule?.stop();
+    microphoneHeld.current = false;
+    if (recognitionRequested.current) {
+      recognitionRequested.current = false;
+      SpeechRecognitionModule?.stop();
+    }
     Speech.stop().catch((speechError) => {
       setError(speechError.message || 'Could not stop speech playback.');
     });
@@ -141,7 +147,11 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
 
   const swap = () => {
     startAttempt.current += 1;
-    if (listening) SpeechRecognitionModule?.stop();
+    microphoneHeld.current = false;
+    if (recognitionRequested.current) {
+      recognitionRequested.current = false;
+      SpeechRecognitionModule?.stop();
+    }
     setStarting(false);
     setListening(false);
     setFromCode(toCode);
@@ -178,7 +188,14 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
     setError('');
     try {
       const permission = await SpeechRecognitionModule.requestPermissionsAsync();
-      if (attempt !== startAttempt.current || !visibleRef.current) return;
+      if (
+        attempt !== startAttempt.current ||
+        !visibleRef.current ||
+        !microphoneHeld.current
+      ) {
+        if (attempt === startAttempt.current) setStarting(false);
+        return;
+      }
       if (!permission.granted) {
         setError('Allow microphone access in Android Settings to use voice input.');
         setStarting(false);
@@ -187,12 +204,14 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
 
       clearResult();
       setInput('');
+      recognitionRequested.current = true;
       SpeechRecognitionModule.start({
         lang: from.speechCode,
         interimResults: true,
         continuous: false,
       });
     } catch (recognitionError) {
+      recognitionRequested.current = false;
       if (attempt !== startAttempt.current) return;
       setError(
         recognitionError instanceof Error
@@ -203,21 +222,35 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
     }
   };
 
-  const toggleListening = () => {
-    if (listening) {
-      SpeechRecognitionModule.stop();
-    } else {
-      startListening();
+  const handleMicPressIn = () => {
+    microphoneHeld.current = true;
+    startListening();
+  };
+
+  const handleMicPressOut = () => {
+    microphoneHeld.current = false;
+    startAttempt.current += 1;
+    setStarting(false);
+    setListening(false);
+    if (recognitionRequested.current) {
+      recognitionRequested.current = false;
+      SpeechRecognitionModule?.stop();
     }
   };
 
   const handleRecognitionStart = () => {
+    if (!microphoneHeld.current) {
+      SpeechRecognitionModule?.stop();
+      return;
+    }
     setStarting(false);
     setListening(true);
     setError('');
   };
 
   const handleRecognitionEnd = () => {
+    recognitionRequested.current = false;
+    microphoneHeld.current = false;
     setStarting(false);
     setListening(false);
   };
@@ -230,7 +263,9 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
   };
 
   const handleRecognitionError = (event) => {
+    recognitionRequested.current = false;
     setStarting(false);
+    microphoneHeld.current = false;
     setListening(false);
     setError(event.message || `Speech recognition failed (${event.error}).`);
   };
@@ -296,7 +331,13 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
             <View className="mt-6 items-center">
               <Waveform active={listening} />
               <View className="mt-3">
-                <MicButton listening={listening} starting={starting} onPress={toggleListening} />
+                <MicButton
+                  listening={listening}
+                  starting={starting}
+                  disabled={translating && !listening && !starting}
+                  onPressIn={handleMicPressIn}
+                  onPressOut={handleMicPressOut}
+                />
               </View>
             </View>
 
