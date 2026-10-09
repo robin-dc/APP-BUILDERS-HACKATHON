@@ -11,7 +11,7 @@ export default function QuickPhrases({ phrases, onSelect }) {
           <Pressable
             key={p}
             onPress={() => onSelect(p)}
-            className="rounded-full border border-line bg-surface px-3.5 py-2 active:bg-chip"
+            className="max-w-full rounded-2xl border border-line bg-surface px-3.5 py-2 active:bg-chip"
           >
             <Text className="text-sm text-ink">{p}</Text>
           </Pressable>

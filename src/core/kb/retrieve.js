@@ -107,9 +107,21 @@ const INTENTS = [
   { categories: ['drink'], re: /\b(bars?|nightlife|clubs?|inuman|beer|drinks?|cocktails?)\b/ },
   { categories: ['buy'], re: /\b(shop|shopping|malls?|markets?|pasalubong|souvenirs?|bumili|bilihan)\b/ },
   { categories: ['sleep'], re: /\b(stay|hotels?|hostels?|resorts?|tulog|matulog|accommodation|lodging|tutuluyan)\b/ },
+  // Moving around inside a place vs getting there are different chunks; "how would I get around"
+  // should not pull Manila-to-Baguio bus routes.
+  {
+    categories: ['get_around'],
+    specific: true,
+    re: /\b(get(ting)? around|go around|move around|ikot|umikot|mag ?ikot|within the (city|town|island)|around (the )?(city|town|island))\b/,
+  },
+  {
+    categories: ['get_in'],
+    specific: true,
+    re: /\b(how (do|can|should|would) (i|we) get (to|there)|how to get (to|there)|get(ting)? (to|there)|paano (pumunta|makarating|makapunta)|galing|from manila)\b/,
+  },
   {
     categories: ['get_in', 'get_around'],
-    re: /\b(how (do|can|should) (i|we) get|how to get|get (to|there|around)|getting (to|there|around)|paano (pumunta|makarating|makapunta)|commute|transport|transportation|bus|buses|jeeps?|jeepneys?|ferry|ferries|boat|flights?|fly|tricycles?|vans?|sakay|sumakay|byahe|biyahe|ruta|route|terminal|airport|pier|port)\b/,
+    re: /\b(commute|transport|transportation|bus|buses|jeeps?|jeepneys?|ferry|ferries|boat|flights?|fly|tricycles?|vans?|sakay|sumakay|byahe|biyahe|ruta|route|terminal|airport|pier|port)\b/,
   },
 ];
 
@@ -117,7 +129,11 @@ const INTENTS = [
 export function detectCategories(question) {
   const q = fold(question);
   const matched = INTENTS.filter((i) => i.re.test(q)).flatMap((i) => i.categories);
-  return matched.length ? [...new Set(matched)] : DEFAULT_CATEGORIES;
+  // A specific "get around" / "get there" question wins over the generic transport words.
+  const specific = INTENTS.filter((i) => i.specific && i.re.test(q)).flatMap((i) => i.categories);
+  const transport = new Set(['get_in', 'get_around']);
+  const result = specific.length ? [...matched.filter((c) => !transport.has(c)), ...specific] : matched;
+  return result.length ? [...new Set(result)] : DEFAULT_CATEGORIES;
 }
 
 const TRAVEL_WORDS =
@@ -183,12 +199,14 @@ export function search(index, question, qvec, k = 3) {
 
 // ---- Explainer prompt ----
 
-// A small model copies a worked example far better than it follows rules, so the example
-// carries most of the tone: straight to the point, "you", no "based on the sources".
-export const SYSTEM_PROMPT = `You are Ducky, a friendly local travel buddy in the Philippines, chatting with a traveler on their phone.
-Use only the facts in the notes. Never invent places, prices, times or routes. If the notes don't cover the question, say so in one sentence.
-Talk like a helpful friend: start with a suggestion, speak to the traveler as "you", and keep it to 2 to 4 short sentences.
-Suggest, don't decide: offer one to three ideas with "you might like", "you could" or "if you're up for it", and let the traveler choose. Never tell them what they want or what they must do.
+// A small model copies worked examples far better than it follows rules, so the two examples
+// carry most of the tone: a warm guide who points out the views, suggests rather than decides,
+// and still gives the practical facts (the commute example keeps directions useful).
+export const SYSTEM_PROMPT = `You are Ducky, a warm and cheerful local tour guide in the Philippines, chatting with a traveler on their phone.
+You love your country and want the traveler to slow down and enjoy it: point out the views, the nature and the little moments worth savoring along the way.
+Use only the facts in the notes. Never invent places, views, prices, times or routes, and only praise sights the notes actually describe. If the notes don't cover the question, say so kindly in one sentence.
+Suggest, don't decide: offer one to three ideas with "you might love", "you could" or "if you're up for it", and let the traveler choose.
+Speak to the traveler as "you", keep it to 3 or 4 short sentences, and end with a warm nudge to take in the scenery.
 Never say "based on the sources", "the source states" or "according to the information", and never repeat the question back.
 
 Example
@@ -196,7 +214,13 @@ Notes:
 - Tagaytay (Cavite, things to do): A ridge city cooler than Manila, known for its views of Taal Volcano and hot bulalo soup.
 - Silang (Cavite, getting there): Buses to Tagaytay pass through Silang; sweet corn stalls line the bypass road.
 Question: what's fun to do in Cavite?
-Answer: You might enjoy a trip up to Tagaytay. It's cooler than Manila, and the view of Taal Volcano goes great with a hot bowl of bulalo. If you pass through Silang, you could also grab some boiled sweet corn from the stalls on the bypass road.`;
+Answer: You might love a trip up to Tagaytay, where the air turns cool and Taal Volcano sits right below the ridge. A hot bowl of bulalo with that view is hard to beat! If you pass through Silang, you could grab some boiled sweet corn from the roadside stalls. Take your time up there and just enjoy the view.
+
+Example
+Notes:
+- Baguio (getting there): Buses from Metro Manila take about 4 to 5 hours; the last part climbs through pine-covered mountains.
+Question: how do I get to Baguio?
+Answer: You could hop on a bus from Metro Manila, and the trip takes about 4 to 5 hours. The best part comes near the end, when the road climbs into pine-covered mountains. If you can, grab a window seat and watch the scenery change as you go up!`;
 
 const LABEL = {
   overview: 'about the place', understand: 'background', see: 'to see', do: 'things to do', eat: 'food', drink: 'nightlife',
@@ -238,6 +262,7 @@ const META_OPENERS =
 const META_INLINE = /\b(?:the |these )?(?:sources?|notes?) (?:states?|says?|mentions?|indicates?|suggests?)(?: that)?[,:]?\s*/gi;
 // Sentence openers that decide for the traveler, softened into suggestions.
 const BOSSY_OPENERS = [
+  [/\bYou could love\b/g, 'You might love'],
   [/(^|[.!?]\s+)You want to\b/g, '$1You could'],
   [/(^|[.!?]\s+)You should\b/g, '$1You could'],
   [/(^|[.!?]\s+)You must\b/g, '$1You might want to'],
@@ -250,6 +275,34 @@ export function polishAnswer(text) {
   out = out.charAt(0).toUpperCase() + out.slice(1);
   for (const [re, to] of BOSSY_OPENERS) out = out.replace(re, to);
   return out;
+}
+
+// The tour guide's sign-off. The small model often skips it, so it's added in code; it carries
+// no facts, so it can't contradict the sources. Picked by topic, varied by question.
+const NUDGES = {
+  scenery: [
+    'Take your time and soak in the view!',
+    "Don't rush it. Pause, look around, and enjoy how beautiful it is.",
+    'Bring a camera, but take a moment to just enjoy it with your own eyes too.',
+  ],
+  commute: [
+    'If you can, grab a window seat and enjoy the scenery along the way!',
+    'Sit back and enjoy the ride. The trip is part of the adventure.',
+  ],
+  food: ['Enjoy every bite!', 'Savor it slowly. Food tastes even better with good company and a nice view.'],
+  stay: ['Rest well, and catch the sunrise if you can!'],
+};
+const ALREADY_NUDGED = /\b(enjoy|soak|savor|savour|take your time|scenery|window seat)\b[^.!?]*[.!?]?\s*$/i;
+
+/** Adds the guide's warm closing line unless the answer already ends on one. */
+export function withNudge(answer, categories, question = '') {
+  if (!answer || ALREADY_NUDGED.test(answer)) return answer;
+  const cats = new Set(categories);
+  const topic = cats.has('get_in') || cats.has('get_around') ? 'commute' : cats.has('eat') || cats.has('drink') ? 'food' : cats.has('sleep') ? 'stay' : 'scenery';
+  const options = NUDGES[topic];
+  let h = 0;
+  for (let i = 0; i < question.length; i++) h = (h * 31 + question.charCodeAt(i)) >>> 0;
+  return `${answer} ${options[h % options.length]}`;
 }
 
 /** "Sources: Wikivoyage — …" line; the CC BY-SA licence requires the credit. */

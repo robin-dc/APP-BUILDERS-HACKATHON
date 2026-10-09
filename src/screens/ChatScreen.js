@@ -31,13 +31,22 @@ export default function ChatScreen() {
 
   const patch = (id, changes) => setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...changes } : m)));
 
+  // Adds the user's message and the reply. Chips on earlier messages are dropped once the user
+  // has answered, so used template prompts don't linger; the new reply may bring its own.
+  const addTurn = (text, reply) =>
+    setMessages((prev) => [
+      ...prev.map(({ suggestions, ...m }) => m),
+      withId({ role: 'user', text }),
+      reply,
+    ]);
+
   const askTravelGuide = async (text) => {
     const reply = withId({ role: 'assistant', text: '…', streaming: true });
-    setMessages((prev) => [...prev, withId({ role: 'user', text }), reply]);
+    addTurn(text, reply);
     busyRef.current = true;
     try {
-      const { text: answer, sources } = await askGuide(text, (soFar) => patch(reply.id, { text: soFar }));
-      patch(reply.id, { text: answer, explanation: sources, streaming: false });
+      const { text: answer } = await askGuide(text, (soFar) => patch(reply.id, { text: soFar }));
+      patch(reply.id, { text: answer, streaming: false });
     } catch (e) {
       console.warn('[guide]', e?.message ?? e);
       patch(reply.id, {
@@ -64,7 +73,7 @@ export default function ChatScreen() {
     }
     const { state, message } = handleMessage(chatRef.current.state, text);
     chatRef.current = { state, message };
-    setMessages((prev) => [...prev, withId({ role: 'user', text }), withId(message)]);
+    addTurn(text, withId(message));
   };
 
   const stopStreaming = () => {

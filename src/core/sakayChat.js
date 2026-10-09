@@ -2,14 +2,15 @@
 // The engine (readSentence, decide, writeReply, detectLanguage) lives in ./model.js, copied from
 // that project's app/www/model.js; update it by rebuilding there and copying it over, not by editing it here.
 
-import { decide, detectLanguage, readSentence, writeReply, WEATHER } from './model';
+import { decide, readSentence, writeReply, WEATHER } from './model';
 
 export const NEW_TRIP = 'New trip';
 
+// Starter chips: two for the travel guide, one for sakay o hintay. Kept short so they fit small screens.
 const EXAMPLES = [
-  'Umuulan, puno na ang jeep, 30 minutes na lang ako',
-  "It's sunny, the jeep has seats, I have 45 minutes",
-  'Malakas ang ulan, sabit na lang, bawal ma-late',
+  "I'm at Tagaytay, what's fun to do here?",
+  'I happen to be at Baguio, how would I get around?',
+  'Umuulan, puno jeep, 30 mins na lang',
 ];
 
 const SAY = {
@@ -35,6 +36,9 @@ const SAY = {
   },
 };
 SAY.mix = { ...SAY.tl, got: (x) => `Okay: ${x}.`, askMins: 'Ilang minutes pa bago ka dapat nandoon?' };
+
+// English is the primary reply language, even when the user writes in Tagalog or Taglish.
+const REPLY_LANG = 'en';
 
 // The page's starting values for the inputs the chat fills in.
 const DEFAULT_CONDITIONS = { weather: 'clear', jeep: 'tight', importance: 'normal', minsLeft: 45, usualRide: 25, tags: [] };
@@ -87,13 +91,16 @@ export function handleMessage(state, raw, trips = [], now = new Date()) {
   const text = String(raw || '').trim();
   if (text === NEW_TRIP) return newChat();
 
-  const lang = detectLanguage(text) || state.lang;
+  // Replies stay in English for now; switch REPLY_LANG to `detectLanguage(text) || state.lang`
+  // to answer in the user's language again (the tl/mix copy above is kept for that).
+  const lang = REPLY_LANG;
   const say = SAY[lang];
   const { hour, weekend } = clock(now);
   const r = readSentence(text, hour);
 
   if (!r.understood.length && !(r.values.notTags || []).length) {
-    return { state: { ...state, lang }, message: reply(say.lost, EXAMPLES) };
+    // No template chips here: they're only offered on a fresh chat, not again once the user has started.
+    return { state: { ...state, lang }, message: reply(say.lost) };
   }
 
   const next = { ...applyValues(state, r.values), lang };

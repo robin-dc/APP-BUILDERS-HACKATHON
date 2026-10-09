@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getLlama, LlamaChatSession } from 'node-llama-cpp';
-import { attribution, buildMessages, loadKb, polishAnswer, queryText, search } from '../src/core/kb/retrieve.js';
+import { attribution, buildMessages, loadKb, polishAnswer, queryText, search, withNudge } from '../src/core/kb/retrieve.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -64,6 +64,6 @@ for (const question of questions) {
   const answer = await session.prompt(user.content, { temperature: 0.5, maxTokens: 200 });
   session.dispose({ disposeSequence: false });
   await chat.seq.clearHistory();
-  console.log(`\n${polishAnswer(answer.trim())}\n${attribution(hits)}\n  (explain ${Date.now() - t3}ms)`);
+  console.log(`\n${withNudge(polishAnswer(answer.trim()), categories, question)}\n${attribution(hits)}\n  (explain ${Date.now() - t3}ms)`);
 }
 await llama.dispose();

@@ -9,6 +9,7 @@ import {
   polishAnswer,
   queryText,
   search,
+  withNudge,
 } from '../core/kb/retrieve';
 import { getEmbedder, getExplainer } from './models';
 
@@ -48,7 +49,8 @@ export async function askGuide(question, onUpdate) {
       onUpdate?.(polishAnswer(text));
     },
   );
-  return { ...result, text: polishAnswer((res.text || text).trim()), sources: attribution(result.hits) };
+  const answer = withNudge(polishAnswer((res.text || text).trim()), result.categories, question);
+  return { ...result, text: answer, sources: attribution(result.hits) };
 }
 
 export const stopGuide = () => explainer?.stopCompletion();

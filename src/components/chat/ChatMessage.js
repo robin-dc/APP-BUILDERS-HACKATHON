@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import RichText from '../RichText';
+import AssistantBubble from './AssistantBubble';
 import AssistantMessage from './AssistantMessage';
 import RouteOptionsCard from './RouteOptionsCard';
 import StopButton from './StopButton';
@@ -24,7 +25,11 @@ export default function ChatMessage({ message, onSuggestion, onStartRide, onComp
 
   return (
     <AssistantMessage>
-      {text && <RichText text={text}>{!explanation && cursor}</RichText>}
+      {text && (
+        <AssistantBubble>
+          <RichText text={text}>{!explanation && cursor}</RichText>
+        </AssistantBubble>
+      )}
       {suggestions && <SuggestionChips suggestions={suggestions} onSelect={onSuggestion} />}
       {routes && (
         <View className={text ? 'mt-3' : ''}>
@@ -37,9 +42,9 @@ export default function ChatMessage({ message, onSuggestion, onStartRide, onComp
         </View>
       )}
       {explanation && (
-        <RichText text={explanation} className="mt-3">
-          {cursor}
-        </RichText>
+        <AssistantBubble className="mt-3">
+          <RichText text={explanation}>{cursor}</RichText>
+        </AssistantBubble>
       )}
       {streaming && <StopButton onPress={onStop} />}
     </AssistantMessage>
