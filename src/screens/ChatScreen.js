@@ -3,17 +3,25 @@ import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatMessage from '../components/chat/ChatMessage';
 import TranslatorSheet from '../components/translator/TranslatorSheet';
-import { demoConversation } from '../data/demoConversation';
+import { handleMessage, newChat } from '../core/sakayChat';
+
+let nextId = 0;
+const withId = (message) => ({ id: `m${nextId++}`, ...message });
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState(demoConversation);
+  // The chat state holds the stop conditions gathered so far, so each message builds on the last.
+  const chatRef = useRef(null);
+  if (!chatRef.current) chatRef.current = newChat();
+  const [messages, setMessages] = useState(() => [withId(chatRef.current.message)]);
   const [draft, setDraft] = useState('');
   const [translatorOpen, setTranslatorOpen] = useState(false);
   const scrollRef = useRef(null);
 
   const send = (text) => {
-    // TODO: hand off to intent extraction + planTrip(); for now just echo the user message.
-    setMessages((prev) => [...prev, { id: `u${Date.now()}`, role: 'user', text }]);
+    if (!text.trim()) return;
+    const { state, message } = handleMessage(chatRef.current.state, text);
+    chatRef.current = { state, message };
+    setMessages((prev) => [...prev, withId({ role: 'user', text }), withId(message)]);
   };
 
   const stopStreaming = () =>
