@@ -7,9 +7,6 @@ import { askGuide, isTravelQuestion, mentionsDestination, stopGuide } from '../a
 import { readSentence } from '../core/model';
 import { handleMessage, newChat, NEW_TRIP } from '../core/sakayChat';
 
-let nextId = 0;
-const withId = (message) => ({ id: `m${nextId++}`, ...message });
-
 // Two assistants share the chat: the travel guide (places, food, how to get there) and
 // "sakay o hintay" (ride this jeep or wait). A named place always goes to the guide; stop
 // conditions like rain, a full jeep or minutes left go to sakay o hintay.
@@ -20,6 +17,12 @@ function routeTo(text) {
 }
 
 export default function ChatScreen() {
+  // Message ids must stay unique for the life of the chat: streaming replies are updated by id, so a
+  // repeated id overwrites an older bubble. The counter lives in a ref (kept across hot reloads, unlike
+  // a module variable) and ids are made outside state updaters, which React may run twice.
+  const idRef = useRef(0);
+  const withId = (message) => ({ id: `m${idRef.current++}`, ...message });
+
   // The chat state holds the stop conditions gathered so far, so each message builds on the last.
   const chatRef = useRef(null);
   if (!chatRef.current) chatRef.current = newChat();
@@ -33,12 +36,10 @@ export default function ChatScreen() {
 
   // Adds the user's message and the reply. Chips on earlier messages are dropped once the user
   // has answered, so used template prompts don't linger; the new reply may bring its own.
-  const addTurn = (text, reply) =>
-    setMessages((prev) => [
-      ...prev.map(({ suggestions, ...m }) => m),
-      withId({ role: 'user', text }),
-      reply,
-    ]);
+  const addTurn = (text, reply) => {
+    const userMessage = withId({ role: 'user', text });
+    setMessages((prev) => [...prev.map(({ suggestions, ...m }) => m), userMessage, reply]);
+  };
 
   const askTravelGuide = async (text) => {
     const reply = withId({ role: 'assistant', text: '…', streaming: true });
@@ -64,7 +65,8 @@ export default function ChatScreen() {
   const send = (text) => {
     if (!text.trim()) return;
     if (busyRef.current) {
-      setMessages((prev) => [...prev, withId({ role: 'assistant', text: 'Still answering your last question, one moment.' })]);
+      const note = withId({ role: 'assistant', text: 'Still answering your last question, one moment.' });
+      setMessages((prev) => [...prev, note]);
       return;
     }
     if (routeTo(text) === 'guide') {
