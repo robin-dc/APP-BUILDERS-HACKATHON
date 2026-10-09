@@ -15,10 +15,20 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.jomkv.biyahebuddy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "llama.rn",
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5be63965-a1f3-488c-8e64-23159e5f3a47"
+      }
     }
   }
 }

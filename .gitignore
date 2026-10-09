@@ -36,6 +36,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# on-device model weights (too big for git; EAS still uploads models/, see .easignore)
+/models/
+*.gguf
+
 # generated native folders
 /ios
 /android

@@ -3,10 +3,21 @@ import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatMessage from '../components/chat/ChatMessage';
 import TranslatorSheet from '../components/translator/TranslatorSheet';
-import { handleMessage, newChat } from '../core/sakayChat';
+import { askGuide, isTravelQuestion, mentionsDestination, stopGuide } from '../ai/travelGuide';
+import { readSentence } from '../core/model';
+import { handleMessage, newChat, NEW_TRIP } from '../core/sakayChat';
 
 let nextId = 0;
 const withId = (message) => ({ id: `m${nextId++}`, ...message });
+
+// Two assistants share the chat: the travel guide (places, food, how to get there) and
+// "sakay o hintay" (ride this jeep or wait). A named place always goes to the guide; stop
+// conditions like rain, a full jeep or minutes left go to sakay o hintay.
+function routeTo(text) {
+  if (mentionsDestination(text)) return 'guide';
+  if (text === NEW_TRIP || readSentence(text, new Date().getHours()).understood.length) return 'sakay';
+  return isTravelQuestion(text) ? 'guide' : 'sakay';
+}
 
 export default function ChatScreen() {
   // The chat state holds the stop conditions gathered so far, so each message builds on the last.
@@ -16,16 +27,50 @@ export default function ChatScreen() {
   const [draft, setDraft] = useState('');
   const [translatorOpen, setTranslatorOpen] = useState(false);
   const scrollRef = useRef(null);
+  const busyRef = useRef(false);
+
+  const patch = (id, changes) => setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...changes } : m)));
+
+  const askTravelGuide = async (text) => {
+    const reply = withId({ role: 'assistant', text: '…', streaming: true });
+    setMessages((prev) => [...prev, withId({ role: 'user', text }), reply]);
+    busyRef.current = true;
+    try {
+      const { text: answer, sources } = await askGuide(text, (soFar) => patch(reply.id, { text: soFar }));
+      patch(reply.id, { text: answer, explanation: sources, streaming: false });
+    } catch (e) {
+      console.warn('[guide]', e?.message ?? e);
+      patch(reply.id, {
+        text:
+          Platform.OS === 'web'
+            ? `The travel guide couldn't reach its models. ${e?.message ?? ''}`
+            : "Sorry, the on-device travel guide isn't available right now. It needs the app's development build, not Expo Go.",
+        streaming: false,
+      });
+    } finally {
+      busyRef.current = false;
+    }
+  };
 
   const send = (text) => {
     if (!text.trim()) return;
+    if (busyRef.current) {
+      setMessages((prev) => [...prev, withId({ role: 'assistant', text: 'Still answering your last question, one moment.' })]);
+      return;
+    }
+    if (routeTo(text) === 'guide') {
+      askTravelGuide(text);
+      return;
+    }
     const { state, message } = handleMessage(chatRef.current.state, text);
     chatRef.current = { state, message };
     setMessages((prev) => [...prev, withId({ role: 'user', text }), withId(message)]);
   };
 
-  const stopStreaming = () =>
+  const stopStreaming = () => {
+    stopGuide();
     setMessages((prev) => prev.map((m) => (m.streaming ? { ...m, streaming: false } : m)));
+  };
 
   return (
     <KeyboardAvoidingView
