@@ -32,6 +32,7 @@ export default function TranslationResultCard({
   to,
   sourceText,
   translatedText,
+  loading = false,
   copied,
   onPlay,
   onCopy,
@@ -47,9 +48,13 @@ export default function TranslationResultCard({
       <View className="my-3 h-px bg-line" />
 
       <Text className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{to.name}</Text>
-      {missing ? (
+      {loading ? (
         <Text className="mt-1 text-[15px] italic text-ink-muted">
-          Not in the offline phrasebook yet.
+          Downloading language model and translating…
+        </Text>
+      ) : missing ? (
+        <Text className="mt-1 text-[15px] italic text-ink-muted">
+          Translation is unavailable for this language pair.
         </Text>
       ) : (
         <Text className="mt-1 text-xl font-bold leading-7 text-ink">{translatedText}</Text>

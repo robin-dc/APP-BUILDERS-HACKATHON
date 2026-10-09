@@ -6,16 +6,29 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Biyahe Buddy to use the microphone for translation.",
+          "speechRecognitionPermission": "Allow Biyahe Buddy to recognize your speech."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.anonymous.biyahebuddy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
