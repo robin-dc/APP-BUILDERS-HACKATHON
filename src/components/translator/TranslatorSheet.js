@@ -206,7 +206,7 @@ export default function TranslatorSheet({ visible, onClose, onInsert }) {
       setInput('');
       recognitionRequested.current = true;
       SpeechRecognitionModule.start({
-        lang: from.speechCode,
+        lang: from.recognitionCode || from.speechCode,
         interimResults: true,
         continuous: false,
       });

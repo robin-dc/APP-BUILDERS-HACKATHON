@@ -2,10 +2,18 @@
 // offline: true  -> model is on the phone ("Offline" badge)
 // offline: false -> needs a download first; sizeLabel shows on the right
 // speechCode is the BCP 47 tag passed to text-to-speech.
+// recognitionCode overrides it when speech recognition uses a different locale.
 
 export const LANGUAGES = [
   { code: 'en', name: 'English', native: 'English', offline: true, speechCode: 'en-US' },
-  { code: 'tl', name: 'Tagalog', native: 'Filipino', offline: true, speechCode: 'fil-PH' },
+  {
+    code: 'tl',
+    name: 'Tagalog',
+    native: 'Filipino',
+    offline: true,
+    speechCode: 'fil-PH',
+    recognitionCode: 'tl-PH',
+  },
   { code: 'ceb', name: 'Cebuano', native: 'Bisaya', offline: true, speechCode: 'fil-PH' },
   { code: 'ilo', name: 'Ilocano', native: 'Ilokano', offline: true, speechCode: 'fil-PH' },
   { code: 'hil', name: 'Hiligaynon', native: 'Ilonggo', offline: true, speechCode: 'fil-PH' },
